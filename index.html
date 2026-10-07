@@ -397,7 +397,7 @@ function renderStats(list){
 
 /* ---------- table ---------- */
 const COLS=[
-  {k:'codi',l:'Codi'},{k:'nom',l:'Projecte'},{k:'gestor',l:'Responsable'},{k:'fase',l:'Fase / àmbit'},{k:'progres',l:'Estat'},
+  {k:'codi',l:'Codi'},{k:'nom',l:'Projecte'},{k:'gestor',l:'Responsable'},{k:'fase',l:'Fase'},{k:'progres',l:'Estat'},
   {k:'fi',l:'Dates'},{k:'proveidor',l:'Proveïdor'},{k:'canal',l:'Canal'},{k:'pressupost',l:'Pressupost',num:1},{k:'alerta',l:'Alerta'}
 ];
 function sortVal(p,k){if(k==='alerta')return alertOf(p);if(k==='pressupost')return +p.pressupost||-1;if(k==='progres')return (+p.pct||0);return String(p[k]??'').toLowerCase()}
