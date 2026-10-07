@@ -397,7 +397,7 @@ function renderStats(list){
 
 /* ---------- table ---------- */
 const COLS=[
-  {k:'codi',l:'Codi'},{k:'nom',l:'Projecte'},{k:'fase',l:'Fase / àmbit'},{k:'progres',l:'Estat'},
+  {k:'codi',l:'Codi'},{k:'nom',l:'Projecte'},{k:'gestor',l:'Responsable'},{k:'fase',l:'Fase / àmbit'},{k:'progres',l:'Estat'},
   {k:'fi',l:'Dates'},{k:'proveidor',l:'Proveïdor'},{k:'canal',l:'Canal'},{k:'pressupost',l:'Pressupost',num:1},{k:'alerta',l:'Alerta'}
 ];
 function sortVal(p,k){if(k==='alerta')return alertOf(p);if(k==='pressupost')return +p.pressupost||-1;if(k==='progres')return (+p.pct||0);return String(p[k]??'').toLowerCase()}
@@ -408,7 +408,8 @@ function renderTable(list){
   $('view').innerHTML=`<div class="scroll"><table><thead><tr>${COLS.map(c=>`<th class="${c.num?'num':''}" data-k="${c.k}" aria-sort="${sort.k===c.k?(sort.dir>0?'ascending':'descending'):'none'}">${c.l}</th>`).join('')}</tr></thead><tbody>${
     rows.map(p=>{const k=mainPhase(p),a=alertOf(p),pct=Math.round((+p.pct||0)*100);return `<tr data-id="${esc(p.codi)}" tabindex="0">
       <td class="code">${esc(p.codi)}</td>
-      <td><div class="pname">${esc(p.nom)}</div><div class="sub">${esc(p.gestor||'')}</div></td>
+      <td><div class="pname">${esc(p.nom)}</div></td>
+      <td>${has(p.gestor)?esc(p.gestor):pend}</td>
       <td><span class="phase"><span class="dot" style="background:${pcol(k)}"></span>${esc(p.fase||'—')}</span><div class="sub">${esc(p.perimetre||'')}</div></td>
       <td><div class="prog"><span class="track"><i style="width:${pct}%"></i></span>${pct} %</div><div class="sub state">${esc(p.progres||'')}</div></td>
       <td style="white-space:nowrap">${fmtDate(p.inici)} – ${fmtDate(p.fi)}</td>
