@@ -175,6 +175,45 @@ tbody tr:hover td{background:var(--surface-2)}
 .cmp .hbar i{display:block;height:100%;background:var(--ok)}
 .miss{font-size:12px;color:var(--muted);margin-top:3px}
 
+/* Finances */
+.fin{padding:18px}
+.fin-sec{margin-top:26px}
+.fin-sec>h3,.fin-head h3{margin:0 0 4px;font-size:15px}
+.fin-sec>.sub{margin:0 0 12px}
+.fin-head select,.ind-head select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:inherit}
+.fin-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.fin-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.fin-tiles .stat{background:var(--surface-2)}
+.fin-tiles .stat.cur{border-color:var(--brand)}
+.fin-tiles .stat.cur .tag{color:var(--brand);font-weight:600}
+.fin-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+@media (max-width:900px){.fin-grid{grid-template-columns:1fr}}
+.ychart{display:flex;align-items:flex-end;gap:18px;height:210px;padding:0 4px;border-bottom:1px solid var(--line)}
+.ycol{flex:1;max-width:120px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:default}
+.ycol .val{font-size:13px;font-weight:600;margin-bottom:6px;white-space:nowrap}
+.ycol .col{width:56%;min-height:2px;background:var(--brand);border-radius:4px 4px 0 0}
+.ycol.nodate .col{background:var(--faint)}
+.ycol:hover .col{filter:brightness(1.12)}
+.ylabels{display:flex;gap:18px;padding:6px 4px 0}
+.ylabels span{flex:1;max-width:120px;text-align:center;font-size:12.5px;color:var(--muted)}
+.ylabels span.cur{color:var(--ink);font-weight:600}
+table.mx{min-width:0;font-size:13px}
+table.mx th{cursor:default;position:static}
+table.mx td,table.mx th{padding:8px 10px}
+table.mx td.num,table.mx th.num{text-align:right;white-space:nowrap}
+table.mx tfoot td{font-weight:600;border-bottom:0}
+table.mx tbody tr:hover td{background:var(--surface-2)}
+table.mx .share{display:flex;align-items:center;gap:8px;min-width:120px}
+table.mx .share .hbar{flex:1;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+table.mx .share .hbar i{display:block;height:100%;background:var(--brand);border-radius:4px}
+table.mx .share b{font-weight:500;color:var(--muted);font-size:12px;width:38px;text-align:right}
+.top-p{display:grid;grid-template-columns:56px 1fr auto;gap:4px 12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer}
+.top-p:hover{background:var(--surface-2)}
+.top-p .c{color:var(--muted);font-weight:600}
+.top-p .m{font-weight:600;text-align:right}
+.top-p .ys{grid-column:2/4;color:var(--muted);font-size:12px}
+.fin-note{margin-top:22px;font-size:12px;color:var(--muted)}
+
 /* Drawer */
 .scrim{position:fixed;inset:0;background:rgba(10,15,25,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 .scrim.open{opacity:1;pointer-events:auto}
@@ -264,6 +303,7 @@ body.locked #app,body.locked .drawer,body.locked .scrim{display:none}
     <button class="tab" role="tab" aria-selected="true" data-view="table">Taula</button>
     <button class="tab" role="tab" aria-selected="false" data-view="gantt">Cronograma</button>
     <button class="tab" role="tab" aria-selected="false" data-view="ind">Indicadors</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="fin">Finances</button>
   </div>
   <section class="panel" id="view"><div class="empty">Carregant la cartera…</div></section>
 </div>
@@ -300,7 +340,7 @@ const pcol=k=>`var(--p${k})`;
 
 let db=null, downloads=null, readOnly=false;
 let projects=[], loaded=false;
-let view='table', sort={k:'codi',dir:1}, phaseFilter=null, groupBy='proveidor';
+let view='table', sort={k:'codi',dir:1}, phaseFilter=null, groupBy='proveidor', finGroup='proveidor';
 let editing=null;
 
 function todayISO(){const d=new Date();return d.toISOString().slice(0,10)}
@@ -475,6 +515,77 @@ function renderInd(list){
   $('gb').onchange=e=>{groupBy=e.target.value;render()};
 }
 
+/* ---------- finances ---------- */
+const FIN_GROUPS=[['proveidor','Proveïdor'],['canal','Canal'],['objectiu','Objectiu'],['perimetre','Perímetre'],['__phase','Fase SDLC'],['progres','Estat'],['gestor','Responsable']];
+const NODATE='Sense dates';
+/* Reparteix el pressupost entre anys, proporcional als dies de cada any entre inici i fi */
+function yearsSplit(p){
+  const m=+p.pressupost||0; if(!m)return {};
+  if(!p.inici||!p.fi||p.fi<p.inici)return {[NODATE]:m};
+  const d0=Date.parse(p.inici+'T00:00:00Z'), d1=Date.parse(p.fi+'T00:00:00Z'), day=864e5, tot=(d1-d0)/day+1, out={};
+  for(let y=new Date(d0).getUTCFullYear();y<=new Date(d1).getUTCFullYear();y++){
+    const a=Math.max(d0,Date.UTC(y,0,1)), b=Math.min(d1,Date.UTC(y,11,31));
+    out[y]=m*((b-a)/day+1)/tot;
+  }
+  return out;
+}
+function renderFin(list){
+  const withB=list.filter(p=>+p.pressupost>0);
+  const total=withB.reduce((s,p)=>s+(+p.pressupost),0);
+  const per=withB.map(p=>({p,ys:yearsSplit(p)}));
+  const byYear={};per.forEach(({ys})=>Object.entries(ys).forEach(([y,v])=>byYear[y]=(byYear[y]||0)+v));
+  const years=Object.keys(byYear).filter(y=>y!==NODATE).sort();if(byYear[NODATE])years.push(NODATE);
+  const nowY=String(new Date().getFullYear());
+  const exec=withB.reduce((s,p)=>s+(+p.pressupost)*Math.min(1,+p.pct||0),0);
+  const pctOf=v=>total?Math.round(v/total*100)+' %':'—';
+  const yl=y=>y===NODATE?y:y;
+  /* agrupació × any */
+  const groups={};
+  per.forEach(({p,ys})=>{
+    let keys,share=1;
+    if(finGroup==='__phase'){const ph=phasesOf(p.fase);keys=ph.map(k=>(PH.find(x=>x.k===k)?k+' ':'')+[...PH,...SIDE].find(x=>x.k===k).n);share=1/ph.length}
+    else keys=[has(p[finGroup])?p[finGroup]:'Sense valor'];
+    keys.forEach(k=>{const g=groups[k]||(groups[k]={t:0,n:0,y:{}});g.n++;Object.entries(ys).forEach(([y,v])=>{g.y[y]=(g.y[y]||0)+v*share;g.t+=v*share})});
+  });
+  const rows=Object.entries(groups).sort((a,b)=>(a[0]==='Sense valor')-(b[0]==='Sense valor')||(finGroup==='__phase'?a[0].localeCompare(b[0]):b[1].t-a[1].t));
+  const maxY=Math.max(1,...years.map(y=>byYear[y]));
+  const estat=ESTATS.map(e=>{const ps=withB.filter(p=>p.progres===e);return [e,ps.length,ps.reduce((s,p)=>s+(+p.pressupost),0)]});
+  const maxE=Math.max(1,...estat.map(e=>e[2]));
+  const top=[...per].sort((a,b)=>b.p.pressupost-a.p.pressupost).slice(0,8);
+  const glabel=FIN_GROUPS.find(g=>g[0]===finGroup)[1];
+  if(!withB.length){$('view').innerHTML='<div class="empty">Cap projecte amb pressupost informat segons els filtres actuals.</div>';return}
+  $('view').innerHTML=`<div class="fin">
+    <div class="fin-tiles">
+      <div class="stat"><div class="v">${eurK(total)}</div><div class="l">pressupost informat · ${withB.length} de ${list.length} projectes</div></div>
+      ${years.map(y=>`<div class="stat${y===nowY?' cur':''}" title="${esc(eur.format(byYear[y]))}"><div class="v">${eurK(byYear[y])}</div><div class="l">${y===NODATE?'sense dates (no repartit)':'pressupost '+y}${y===nowY?' · <span class="tag">any en curs</span>':''}</div></div>`).join('')}
+      <div class="stat" title="${esc(eur.format(exec))}"><div class="v">${eurK(exec)}</div><div class="l">execució estimada · ${pctOf(exec)} (segons % completat)</div></div>
+      <div class="stat" title="${esc(eur.format(total-exec))}"><div class="v">${eurK(total-exec)}</div><div class="l">pendent d'executar · ${pctOf(total-exec)}</div></div>
+    </div>
+    <div class="fin-grid fin-sec">
+      <div><h3>Pressupost per any</h3><p class="sub">Repartit segons els dies de cada projecte dins de cada any.</p>
+        <div class="ychart">${years.map(y=>`<div class="ycol${y===NODATE?' nodate':''}" title="${esc(yl(y))}: ${esc(eur.format(byYear[y]))} (${pctOf(byYear[y])} del total)"><span class="val">${eurK(byYear[y])}</span><span class="col" style="height:${(byYear[y]/maxY*78).toFixed(1)}%"></span></div>`).join('')}</div>
+        <div class="ylabels">${years.map(y=>`<span class="${y===nowY?'cur':''}">${esc(y)}</span>`).join('')}</div>
+      </div>
+      <div><h3>Pressupost per estat</h3><p class="sub">On és compromesa la inversió.</p>
+        <div class="grp hd"><span>Estat</span><span></span><span class="n">Projectes</span><span class="m">Pressupost</span></div>
+        ${estat.map(([e,n,m])=>`<div class="grp" title="${esc(e)}: ${esc(eur.format(m))} (${pctOf(m)})"><span>${esc(e)}</span><span class="hbar"><i style="width:${(m/maxE*100).toFixed(1)}%"></i></span><span class="n">${n}</span><span class="m">${m?eurK(m):'—'}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="fin-sec">
+      <div class="fin-head"><h3>Distribució anual per</h3><select id="fg" aria-label="Agrupa el pressupost per">${FIN_GROUPS.map(([k,l])=>`<option value="${k}"${k===finGroup?' selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="scroll"><table class="mx"><thead><tr><th>${esc(glabel)}</th><th class="num">Projectes</th>${years.map(y=>`<th class="num">${esc(y)}</th>`).join('')}<th class="num">Total</th><th>Pes</th></tr></thead>
+      <tbody>${rows.map(([k,g])=>`<tr><td>${esc(k)}</td><td class="num">${g.n}</td>${years.map(y=>`<td class="num" title="${esc(eur.format(g.y[y]||0))}">${g.y[y]?eurK(g.y[y]):'—'}</td>`).join('')}<td class="num"><b>${eurK(g.t)}</b></td><td><span class="share"><span class="hbar"><i style="width:${(g.t/total*100).toFixed(1)}%"></i></span><b>${pctOf(g.t)}</b></span></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td><td class="num">${withB.length}</td>${years.map(y=>`<td class="num">${eurK(byYear[y])}</td>`).join('')}<td class="num">${eurK(total)}</td><td></td></tr></tfoot></table></div>
+    </div>
+    <div class="fin-sec"><h3>Projectes amb més pressupost</h3><p class="sub">Els ${top.length} primers, amb el repartiment per any.</p>
+      ${top.map(({p,ys})=>`<div class="top-p" data-id="${esc(p.codi)}" tabindex="0"><span class="c">${esc(p.codi)}</span><span>${esc(p.nom)}</span><span class="m">${eurK(+p.pressupost)}</span><span class="ys">${Object.entries(ys).map(([y,v])=>`${esc(y)}: ${eurK(v)}`).join(' · ')}</span></div>`).join('')}
+    </div>
+    <p class="fin-note">Només compten els projectes amb pressupost informat (${withB.length} de ${list.length}). El pressupost de cada projecte es reparteix entre anys de manera proporcional als dies compresos entre la data d'inici i la de finalització. L'execució estimada és el pressupost multiplicat pel % completat. Les xifres responen als filtres actius.</p>
+  </div>`;
+  $('fg').onchange=e=>{finGroup=e.target.value;render()};
+  $('view').querySelectorAll('.top-p').forEach(el=>{el.onclick=()=>openDrawer(el.dataset.id);el.onkeydown=e=>{if(e.key==='Enter')openDrawer(el.dataset.id)}});
+}
+
 /* ---------- drawer ---------- */
 const FIELDS=[
   ['codi','Codi','text'],['nom','Projecte','text'],['gestor','Gestor','text','dlGestor'],
@@ -565,7 +676,7 @@ function render(){
   if(!loaded)return;
   const list=filtered();
   renderStrip(list);renderStats(list);renderChips();
-  if(view==='table')renderTable(list);else if(view==='gantt')renderGantt(list);else renderInd(list);
+  if(view==='table')renderTable(list);else if(view==='gantt')renderGantt(list);else if(view==='fin')renderFin(list);else renderInd(list);
 }
 
 /* ---------- wiring ---------- */
