@@ -171,8 +171,12 @@ td.c-alerta{min-width:96px;max-width:116px}
 .g-fita{position:absolute;top:9px;width:12px;height:12px;margin-left:-6px;transform:rotate(45deg);box-sizing:border-box;background:var(--surface);border:2px solid var(--ink);z-index:2;cursor:help}
 .g-fita.done{background:var(--ok);border-color:var(--ok)}
 .g-fita.late{background:var(--warn-soft);border-color:var(--warn)}
-.g-fita-ico{display:inline-block;width:9px;height:9px;margin:0 3px;transform:rotate(45deg);background:var(--ink)}
-.g-llegenda{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--sans);font-weight:400;font-size:11.5px;color:var(--muted)}
+.g-fita-ico{display:inline-block;width:8px;height:8px;margin:0 8px 1px 3px;transform:rotate(45deg);box-sizing:border-box;background:var(--surface);border:1.5px solid var(--ink)}
+.g-fita-ico.done{background:var(--ok);border-color:var(--ok)}
+.g-fita-ico.late{background:var(--warn-soft);border-color:var(--warn)}
+.g-row-fita .g-label{padding-left:22px;color:var(--muted);font-style:italic}
+.g-row-fita .g-label .code{font-style:normal}
+.g-llegenda{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:10px 12px 0;font-size:11.5px;color:var(--muted)}
 .g-llegenda .g-fita{position:static;display:inline-block;width:9px;height:9px;margin:0 2px 0 10px;cursor:default}
 .g-today{position:absolute;top:0;bottom:0;border-left:2px solid var(--brand);pointer-events:none;z-index:1}
 .g-today span{position:absolute;top:2px;left:4px;font-size:11px;color:var(--brand);font-weight:600;background:var(--surface);padding:0 3px}
@@ -505,18 +509,25 @@ function renderGantt(list){
   const fEst=f=>f.estat==='Finalitzat'?' done':(f.fi<todayISO()?' late':'');
   const fTit=f=>f.codi+' · '+f.nom+' · '+fmtDate(f.fi)+(f.estat?' · '+f.estat:'')+(f.fi<todayISO()&&f.estat!=='Finalitzat'?' · endarrerida':'');
   const dia=f=>`<span class="g-fita${fEst(f)}" style="left:${x(f.fi)}%" title="${esc(fTit(f))}"></span>`;
-  const fitesLane=FT.length?`<div class="g-lane"><span class="g-fita-ico"></span>Fites del programa<span class="g-llegenda"><span class="g-fita done"></span>assolida<span class="g-fita"></span>pendent<span class="g-fita late"></span>endarrerida</span></div>`+
-    FT.map(f=>`<div class="g-row"><div class="g-label" style="cursor:default" title="${esc(f.codi+' - '+f.nom)}"><span class="code">${esc(f.codi)}</span>${esc(f.nom)}</div><div class="g-track">${dia(f)}</div></div>`).join(''):'';
+  /* Cada fita va just a sota del darrer projecte que cita; les que no citen cap projecte, al final */
+  const fRow=f=>`<div class="g-row g-row-fita"><div class="g-label" style="cursor:default" title="${esc(f.codi+' - '+f.nom)}"><span class="g-fita-ico${fEst(f)}"></span><span class="code">${esc(f.codi)}</span>${esc(f.nom)}</div><div class="g-track">${dia(f)}</div></div>`;
+  const ordre=[];lanes.forEach(l=>l.items.forEach(p=>ordre.push(p.codi)));
+  const sota={}, soltes=[];
+  FT.forEach(f=>{const ps=(f.projectes||[]).filter(c=>ordre.includes(c));
+    if(!ps.length){if(!(f.projectes||[]).length)soltes.push(f);return}
+    const ult=ps.sort((a,b)=>ordre.indexOf(a)-ordre.indexOf(b)).pop();(sota[ult]=sota[ult]||[]).push(f)});
+  const fitesSoltes=soltes.length?`<div class="g-lane"><span class="g-fita-ico"></span>Fites del programa</div>`+soltes.map(fRow).join(''):'';
+  const llegenda=FT.length?`<div class="g-llegenda"><span class="g-fita done"></span>fita assolida<span class="g-fita"></span>fita pendent<span class="g-fita late"></span>fita endarrerida</div>`:'';
   $('view').innerHTML=`<div class="scroll"><div class="gantt">
     <div class="g-head"><div class="g-label" style="cursor:default;color:var(--muted)">Projecte</div><div class="g-months">${months.map(m=>`<span style="left:${x(m.toISOString().slice(0,10))}%">${fmtM(m)}</span>`).join('')}</div></div>
     <div style="position:relative">
       <div class="g-grid">${months.map(m=>`<i style="left:${x(m.toISOString().slice(0,10))}%"></i>`).join('')}${tx>=0&&tx<=100?`<div class="g-today" style="left:${tx}%"><span>avui</span></div>`:''}</div>
-      ${fitesLane}${lanes.map(l=>`<div class="g-lane"><span class="dot" style="background:${pcol(l.ph.k)}"></span>${PH.includes(l.ph)?l.ph.k+' ':''}${esc(l.ph.n)}</div>`+
+      ${lanes.map(l=>`<div class="g-lane"><span class="dot" style="background:${pcol(l.ph.k)}"></span>${PH.includes(l.ph)?l.ph.k+' ':''}${esc(l.ph.n)}</div>`+
         l.items.map(p=>{const a=alertOf(p),pct=(+p.pct||0)*100;return `<div class="g-row">
           <div class="g-label" data-id="${esc(p.codi)}" title="${esc(p.nom)}"><span class="code">${esc(p.codi)}</span>${esc(p.nom)}</div>
           <div class="g-track"><div class="g-bar${a?' late':''}" data-id="${esc(p.codi)}" title="${esc(p.codi+' · '+fmtDate(p.inici)+' – '+fmtDate(p.fi)+(a?' · '+a:''))}"
-            style="left:${x(p.inici)}%;width:${Math.max(.6,x(p.fi)-x(p.inici))}%;--c:${pcol(l.ph.k)}"><span class="done" style="width:${pct}%"></span></div>${FT.filter(f=>(f.projectes||[]).includes(p.codi)).map(dia).join('')}</div></div>`}).join('')).join('')}
-    </div></div></div>`;
+            style="left:${x(p.inici)}%;width:${Math.max(.6,x(p.fi)-x(p.inici))}%;--c:${pcol(l.ph.k)}"><span class="done" style="width:${pct}%"></span></div>${FT.filter(f=>(f.projectes||[]).includes(p.codi)).map(dia).join('')}</div></div>`+(sota[p.codi]||[]).map(fRow).join('')}).join('')).join('')}${fitesSoltes}
+    </div>${llegenda}</div></div>`;
   $('view').querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>openDrawer(el.dataset.id));
 }
 
