@@ -451,9 +451,9 @@ function renderStats(list){
 /* ---------- table ---------- */
 const COLS=[
   {k:'codi',l:'Codi'},{k:'nom',l:'Projecte'},{k:'gestor',l:'Responsable'},{k:'fase',l:'Fase'},{k:'progres',l:'Estat'},
-  {k:'fi',l:'Dates'},{k:'proveidor',l:'Proveïdor'},{k:'canal',l:'Canal'},{k:'pressupost',l:'Pressupost',num:1},{k:'alerta',l:'Alerta'}
+  {k:'fi',l:'Dates'},{k:'proveidor',l:'Proveïdor'},{k:'canal',l:'Canal'},{k:'pressupost2026',l:'Pressupost 2026',num:1},{k:'pressupost',l:'Pressupost total',num:1},{k:'alerta',l:'Alerta'}
 ];
-function sortVal(p,k){if(k==='alerta')return alertOf(p);if(k==='pressupost')return +p.pressupost||-1;if(k==='progres')return (+p.pct||0);return String(p[k]??'').toLowerCase()}
+function sortVal(p,k){if(k==='alerta')return alertOf(p);if(k==='pressupost')return +p.pressupost||-1;if(k==='pressupost2026')return has(p.pressupost2026)?+p.pressupost2026:-1;if(k==='progres')return (+p.pct||0);return String(p[k]??'').toLowerCase()}
 function renderTable(list){
   if(!list.length){$('view').innerHTML=`<div class="empty">${projects.length?'Cap projecte coincideix amb els filtres.':'La cartera és buida. Afegeix el primer projecte.'}</div>`;return}
   const rows=[...list].sort((a,b)=>{const x=sortVal(a,sort.k),y=sortVal(b,sort.k);return (x>y?1:x<y?-1:0)*sort.dir});
@@ -468,6 +468,7 @@ function renderTable(list){
       <td style="white-space:nowrap">${fmtDate(p.inici)} – ${fmtDate(p.fi)}</td>
       <td>${has(p.proveidor)?esc(p.proveidor):pend}</td>
       <td>${has(p.canal)?esc(p.canal):pend}</td>
+      <td class="num">${has(p.pressupost2026)?eur.format(+p.pressupost2026):pend}</td>
       <td class="num">${has(p.pressupost)?eur.format(+p.pressupost):pend}</td>
       <td>${a?`<span class="flag">${esc(a)}</span>`:''}</td></tr>`}).join('')
   }</tbody></table></div>`;
@@ -603,7 +604,7 @@ function renderFin(list){
 const FIELDS=[
   ['codi','Codi','text'],['nom','Projecte','text'],['gestor','Gestor','text','dlGestor'],
   ['progres','Estat','select'],['pct','% completat','number'],['inici','Inici','date'],['fi','Finalització','date'],
-  ['proveidor','Proveïdor','text','dlProv'],['canal','Canal de compra','text','dlCanal'],['pressupost','Pressupost (€)','number'],
+  ['proveidor','Proveïdor','text','dlProv'],['canal','Canal de compra','text','dlCanal'],['pressupost2026','Pressupost 2026 (€)','number'],['pressupost','Pressupost total (€)','number'],
   ['fase','Fase / àmbit SDLC','text','dlFase'],['objectiu','Objectiu','text','dlObj'],['perimetre','Perímetre','text','dlPer'],['notes','Notes','textarea']
 ];
 function inputFor([k,l,t,dl],p,isNew){
@@ -623,7 +624,7 @@ function openDrawer(id){
   const pair=(a,b)=>`<div class="two">${blk([a])}${blk([b])}</div>`;
   $('form').innerHTML=blk(['codi'])+(isNew?'<div class="hint" style="margin:-8px 0 12px">Format: PR seguit de números, p. ex. PR057. No es pot canviar després.</div>':'')+
     blk(['nom','gestor'])+pair('progres','pct')+pair('inici','fi')+
-    '<h3 style="font-size:14px;margin:18px 0 8px">Compra</h3>'+blk(['proveidor'])+pair('canal','pressupost')+
+    '<h3 style="font-size:14px;margin:18px 0 8px">Compra</h3>'+blk(['proveidor','canal'])+pair('pressupost2026','pressupost')+
     '<h3 style="font-size:14px;margin:18px 0 8px">Classificació PRISMA</h3>'+blk(['fase','objectiu','perimetre'])+
     '<div class="hint" style="margin:-6px 0 12px">Fase: comença amb el número (01–08) o escriu Transversal / Running perquè surti a la franja del SDLC.</div>'+blk(['notes'])+
     (p.updatedAt?`<div class="hint">Darrera modificació: ${new Date(p.updatedAt).toLocaleString('ca-ES')}</div>`:'');
@@ -648,6 +649,7 @@ async function saveDrawer(){
   const doc={...prev,...o,codi,
     pct:Math.min(100,Math.max(0,+o.pct||0))/100,
     pressupost:o.pressupost===''?null:+o.pressupost,
+    pressupost2026:o.pressupost2026===''?null:+o.pressupost2026,
     updatedAt:new Date().toISOString()};
   ['proveidor','canal','gestor','fase','objectiu','perimetre','notes','inici','fi'].forEach(k=>{if(doc[k]==='')doc[k]=null});
   $('dSave').disabled=true;
@@ -669,9 +671,9 @@ async function exportXlsx(){
   const rows=filtered().sort((a,b)=>a.codi.localeCompare(b.codi)).map(p=>({
     'Codi':p.codi,'Projecte':p.nom,'Gestor':p.gestor||'','Progrés':p.progres||'','% completat':+p.pct||0,
     'Inici':p.inici||'','Finalització':p.fi||'','Fase / àmbit SDLC':p.fase||'','Objectiu':p.objectiu||'','Perímetre':p.perimetre||'',
-    'Proveïdor':p.proveidor||'','Canal':p.canal||'','Pressupost (€)':has(p.pressupost)?+p.pressupost:'','Alerta':alertOf(p),'Notes':p.notes||''}));
+    'Proveïdor':p.proveidor||'','Canal':p.canal||'','Pressupost 2026 (€)':has(p.pressupost2026)?+p.pressupost2026:'','Pressupost (€)':has(p.pressupost)?+p.pressupost:'','Alerta':alertOf(p),'Notes':p.notes||''}));
   const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[8,55,26,13,11,12,12,30,18,28,18,12,14,22,40].map(w=>({wch:w}));
+  ws['!cols']=[8,55,26,13,11,12,12,30,18,28,18,12,16,14,22,40].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Projectes');
   const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
   const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
@@ -743,12 +745,13 @@ function init(){
       const out={};
       rows.forEach(r=>{const codi=String(g(r,'Codi')).trim();if(!codi)return;
         let pct=+g(r,'% completat')||0;if(pct>1)pct=pct/100;
-        const pr=g(r,'Pressupost (€)','PRESSUPOST','Pressupost');
+        const pr=g(r,'Pressupost (€)','PRESSUPOST TOTAL','Pressupost total','PRESSUPOST','Pressupost');
+        const pr26=g(r,'Pressupost 2026 (€)','PRESSUPOST 2026','Pressupost 2026');
         const nz=v=>{v=String(v).trim();return v===''?null:v};
         out[codi]={codi,nom:nz(g(r,'Projecte'))||codi,gestor:nz(g(r,'Gestor')),progres:nz(g(r,'Progrés'))||'Sense iniciar',pct,
           inici:iso(g(r,'Inici')),fi:iso(g(r,'Finalització')),fase:nz(g(r,'Fase / àmbit SDLC','Fase / àmbit SDLC (proposta)')),
           objectiu:nz(g(r,'Objectiu','Objectiu (proposta)')),perimetre:nz(g(r,'Perímetre','Perímetre (proposta)')),
-          proveidor:nz(g(r,'Proveïdor','PROVEIDOR')),canal:nz(g(r,'Canal','CANAL')),pressupost:pr===''?null:+pr,notes:nz(g(r,'Notes')),updatedAt:new Date().toISOString()}});
+          proveidor:nz(g(r,'Proveïdor','PROVEIDOR')),canal:nz(g(r,'Canal','CANAL')),pressupost:pr===''?null:+pr,pressupost2026:pr26===''?null:+pr26,notes:nz(g(r,'Notes')),updatedAt:new Date().toISOString()}});
       const n=Object.keys(out).length;
       if(!n){toast('No s\'ha trobat cap projecte amb codi al fitxer');return}
       if(!confirm(`El fitxer conté ${n} projectes. Vols substituir la cartera actual per aquestes dades?`))return;
