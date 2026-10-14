@@ -464,14 +464,16 @@ function renderStrip(list){
 /* ---------- stats ---------- */
 function renderStats(list){
   const total=list.reduce((s,p)=>s+(+p.pressupost||0),0);
+  const t26=list.reduce((s,p)=>s+(+p.pressupost2026||0),0), n26=list.filter(p=>has(p.pressupost2026)).length, nTot=list.filter(p=>has(p.pressupost)).length;
   const fin=list.filter(p=>p.progres==='Finalitzat').length;
   const al=list.filter(p=>alertOf(p)).length;
   const missing=list.filter(p=>!has(p.proveidor)||!has(p.canal)||!has(p.pressupost)).length;
   const avg=list.length?list.reduce((s,p)=>s+(+p.pct||0),0)/list.length:0;
   $('stats').innerHTML=`
    <div class="stat"><div class="v">${list.length}</div><div class="l">${list.length===1?'projecte':'projectes'}${list.length!==projects.length?` de ${projects.length}`:''}</div></div>
-   <div class="stat"><div class="v">${eurK(total)}</div><div class="l">pressupost informat</div></div>
-   <div class="stat"><div class="v">${fin}</div><div class="l">finalitzats · avanç mitjà ${Math.round(avg*100)} %</div></div>
+   <div class="stat" title="${esc(eur.format(t26))}"><div class="v">${eurK(t26)}</div><div class="l">pressupost 2026 · ${n26} informats</div></div>
+   <div class="stat" title="${esc(eur.format(total))}"><div class="v">${eurK(total)}</div><div class="l">pressupost total · ${nTot} informats</div></div>
+   <div class="stat"><div class="v">${Math.round(avg*100)} %</div><div class="l">avenç mitjà · ${fin} ${fin===1?'finalitzat':'finalitzats'}</div></div>
    <div class="stat alert"><div class="v">${al}</div><div class="l">amb alerta de calendari</div>${al?'<button data-go="alert">Mostra-les</button>':''}</div>
    <div class="stat"><div class="v">${missing}</div><div class="l">amb dades econòmiques pendents</div>${missing?'<button data-go="missing">Mostra\'ls</button>':''}</div>`;
   $('stats').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
