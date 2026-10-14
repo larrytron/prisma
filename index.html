@@ -157,6 +157,7 @@ td.c-alerta{min-width:96px;max-width:116px}
 .prog .track i{display:block;height:100%;background:var(--ok)}
 .state{font-size:12.5px}
 .pending{color:var(--faint);font-style:italic}
+.sub.pend{color:var(--warn);font-weight:500}
 .flag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-weight:600;white-space:nowrap}
 .empty{padding:40px 20px;text-align:center;color:var(--muted)}
 
@@ -325,7 +326,6 @@ body.locked #app,body.locked .drawer,body.locked .scrim{display:none}
     <div class="actions">
       <button class="btn" id="btnImport" disabled>Importa Excel</button><input type="file" id="fileImport" accept=".xlsx,.xls" hidden>
       <button class="btn" id="btnExport" disabled>Exporta a Excel</button>
-      <button class="btn primary editonly" id="btnAdd">Afegeix projecte</button>
       <button class="btn ghost" id="btnLogout" title="Tanca la sessió">Surt</button>
     </div>
   </header>
@@ -406,6 +406,10 @@ function phasesOf(f){
   return [...s].sort();
 }
 function mainPhase(p){const ph=phasesOf(p.fase);return ph[0]}
+/* Dades rellevants que han d'estar informades */
+const PEND=[['gestor','responsable'],['__dates','dates'],['fase','fase'],['proveidor','proveïdor'],['canal','canal'],['pressupost2026','pressupost 2026'],['pressupost','pressupost total']];
+function pendingOf(p){return PEND.filter(([k])=>k==='__dates'?!(p.inici&&p.fi):!has(p[k])).map(x=>x[1])}
+let pendFilter=false;
 function alertOf(p){
   const t=todayISO(), pct=+p.pct||0;
   if(p.progres==='Sense iniciar'&&pct>0) return 'Incoherència estat / %';
@@ -442,6 +446,7 @@ function filtered(){
     if(!match('fEstat',p.progres)||!match('fProv',p.proveidor)||!match('fCanal',p.canal)||!match('fObj',p.objectiu)||!match('fPer',p.perimetre))return false;
     if(fa){const a=alertOf(p);if(fa==='__any'?!a:a!==fa)return false}
     if(phaseFilter&&!phasesOf(p.fase).includes(phaseFilter))return false;
+    if(pendFilter&&!pendingOf(p).length)return false;
     return true;
   });
 }
@@ -475,7 +480,7 @@ function renderStats(list){
   const t26=list.reduce((s,p)=>s+(+p.pressupost2026||0),0), n26=list.filter(p=>has(p.pressupost2026)).length, nTot=list.filter(p=>has(p.pressupost)).length;
   const fin=list.filter(p=>p.progres==='Finalitzat').length;
   const al=list.filter(p=>alertOf(p)).length;
-  const missing=list.filter(p=>!has(p.proveidor)||!has(p.canal)||!has(p.pressupost)).length;
+  const missing=list.filter(p=>pendingOf(p).length).length;
   const avg=list.length?list.reduce((s,p)=>s+(+p.pct||0),0)/list.length:0;
   $('stats').innerHTML=`
    <div class="stat"><div class="v">${list.length}</div><div class="l">${list.length===1?'projecte':'projectes'}${list.length!==projects.length?` de ${projects.length}`:''}</div></div>
@@ -483,10 +488,10 @@ function renderStats(list){
    <div class="stat" title="${esc(eur.format(total))}"><div class="v">${eurK(total)}</div><div class="l">pressupost total · ${nTot} informats</div></div>
    <div class="stat"><div class="v">${Math.round(avg*100)} %</div><div class="l">avenç mitjà · ${fin} ${fin===1?'finalitzat':'finalitzats'}</div></div>
    <div class="stat alert"><div class="v">${al}</div><div class="l">amb alerta de calendari</div>${al?'<button data-go="alert">Mostra-les</button>':''}</div>
-   <div class="stat"><div class="v">${missing}</div><div class="l">amb dades econòmiques pendents</div>${missing?'<button data-go="missing">Mostra\'ls</button>':''}</div>`;
+   <div class="stat"><div class="v">${missing}</div><div class="l" title="Responsable, dates, fase, proveïdor, canal, pressupost 2026 o pressupost total sense informar">amb dades pendents</div>${missing?'<button data-go="missing">Mostra\'ls</button>':''}</div>`;
   $('stats').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
     if(b.dataset.go==='alert'){$('fAlert').value='__any'}
-    else{$('fProv').value='';$('fCanal').value='';view='ind';setTabs();groupBy='__missing'}
+    else{pendFilter=true;view='table';setTabs()}
     render();
   });
 }
@@ -504,13 +509,13 @@ try{const v=JSON.parse(localStorage.getItem(COLKEY)||'[]');if(Array.isArray(v))h
 function saveCols(){try{localStorage.setItem(COLKEY,JSON.stringify([...hiddenCols]))}catch(e){}}
 const SUMCOLS=['pressupost2026','pressupost','recurrent2027'];
 function renderTable(list){
-  if(!list.length){$('view').innerHTML=`<div class="empty">${projects.length?'Cap projecte coincideix amb els filtres.':'La cartera és buida. Afegeix el primer projecte.'}</div>`;return}
+  if(!list.length){$('view').innerHTML=`<div class="empty">${projects.length?'Cap projecte coincideix amb els filtres.':'La cartera és buida.'}</div>`;return}
   const rows=[...list].sort((a,b)=>{const x=sortVal(a,sort.k),y=sortVal(b,sort.k);return (x>y?1:x<y?-1:0)*sort.dir});
   const pend='<span class="pending">pendent</span>';
   const vis=COLS.map(c=>!hiddenCols.has(c.k)), nVis=vis.filter(Boolean).length;
   const cells=p=>{const k=mainPhase(p),a=alertOf(p),pct=Math.round((+p.pct||0)*100);return [
       `<td class="code">${esc(p.codi)}</td>`,
-      `<td class="c-nom"><div class="pname">${esc(p.nom)}</div></td>`,
+      `<td class="c-nom"><div class="pname">${esc(p.nom)}</div>${pendFilter?`<div class="sub pend">Falta: ${esc(pendingOf(p).join(', '))}</div>`:''}</td>`,
       `<td>${has(p.gestor)?esc(p.gestor):pend}</td>`,
       `<td class="c-fase"><span class="phase"><span class="dot" style="background:${pcol(k)}"></span>${esc(p.fase||'—')}</span><div class="sub">${esc(p.perimetre||'')}</div></td>`,
       `<td><div class="prog"><span class="track"><i style="width:${pct}%"></i></span>${pct} %</div><div class="sub state">${esc(p.progres||'')}</div></td>`,
@@ -584,7 +589,7 @@ function renderInd(list){
   const add=(key,p,share=1)=>{const g=groups[key]||(groups[key]={n:0,m:0});g.n++;g.m+=(+p.pressupost||0)*share};
   list.forEach(p=>{
     if(groupBy==='__phase'){const ph=phasesOf(p.fase);ph.forEach(k=>add((PH.find(x=>x.k===k)?k+' ':'')+[...PH,...SIDE].find(x=>x.k===k).n,p,1/ph.length))}
-    else if(groupBy==='__missing'){['proveidor','canal','pressupost'].forEach(f=>{if(!has(p[f]))add('Sense '+({proveidor:'proveïdor',canal:'canal',pressupost:'pressupost'})[f],p)})}
+    else if(groupBy==='__missing'){pendingOf(p).forEach(f=>add('Sense '+f,p))}
     else add(has(p[groupBy])?p[groupBy]:'Sense valor',p);
   });
   const arr=Object.entries(groups).sort((a,b)=>(a[0]==='Sense valor')-(b[0]==='Sense valor')||(groupBy==='__phase'?a[0].localeCompare(b[0]):(b[1].m-a[1].m)||(b[1].n-a[1].n)));
@@ -779,7 +784,8 @@ async function exportXlsx(){
 function setTabs(){document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.view===view))}
 function renderChips(){
   $('chips').innerHTML=phaseFilter?`<span class="chip"><span class="dot" style="background:${pcol(phaseFilter)}"></span>${esc([...PH,...SIDE].find(x=>x.k===phaseFilter).n)}<button aria-label="Treu el filtre de fase">×</button></span>`:'';
-  const b=$('chips').querySelector('button');if(b)b.onclick=()=>{phaseFilter=null;render()};
+  if(pendFilter)$('chips').insertAdjacentHTML('beforeend',`<span class="chip" id="chipPend">Projectes amb dades pendents<button aria-label="Treu el filtre de dades pendents">×</button></span>`);
+  $('chips').querySelectorAll('.chip').forEach(c=>{const b=c.querySelector('button');b.onclick=()=>{if(c.id==='chipPend')pendFilter=false;else phaseFilter=null;render()}});
 }
 function render(){
   if(!loaded)return;
@@ -790,9 +796,8 @@ function render(){
 
 /* ---------- wiring ---------- */
 ['q','fEstat','fProv','fCanal','fObj','fPer','fAlert'].forEach(id=>$(id).addEventListener(id==='q'?'input':'change',render));
-$('btnClear').onclick=()=>{['q','fEstat','fProv','fCanal','fObj','fPer','fAlert'].forEach(id=>$(id).value='');phaseFilter=null;render()};
+$('btnClear').onclick=()=>{['q','fEstat','fProv','fCanal','fObj','fPer','fAlert'].forEach(id=>$(id).value='');phaseFilter=null;pendFilter=false;render()};
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{view=t.dataset.view;setTabs();render()});
-$('btnAdd').onclick=()=>openDrawer(null);
 $('dClose').onclick=closeDrawer;$('scrim').onclick=closeDrawer;
 $('dSave').onclick=saveDrawer;$('dDelete').onclick=deleteDrawer;
 $('btnExport').onclick=exportXlsx;
