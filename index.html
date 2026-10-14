@@ -15,7 +15,7 @@
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
   --bg:#F3F4F6; --surface:#FFFFFF; --surface-2:#F8F9FB; --ink:#1A2130; --muted:#5A6373; --faint:#8A93A3;
-  --line:#DCE0E6; --brand:#C00000; --brand-soft:#FBE8E8; --warn:#A64B00; --warn-soft:#FDEFE0; --ok:#1C7A4C; --ok-soft:#E3F3EA;
+  --line:#DCE0E6; --brand:#C00000; --brand-soft:#FBE8E8; --warn:#A64B00; --warn-soft:#FDEFE0; --ok:#1C7A4C; --ok-soft:#E3F3EA; --fin-inv:#C00000; --fin-rec:#0A5CB8;
   --p01:#00A04E; --p02:#14325F; --p03:#0A5CB8; --p04:#0E8C80; --p05:#6747A3; --p06:#E07F00; --p07:#A3173C; --p08:#D42A30;
   --pT:#6E7787; --pR:#38455A;
   --shadow:0 1px 2px rgba(20,30,50,.06),0 4px 16px rgba(20,30,50,.06);
@@ -25,13 +25,13 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#12161D; --surface:#1A1F28; --surface-2:#202631; --ink:#E7EAF0; --muted:#A3ACBB; --faint:#7C8596;
-    --line:#2E3542; --brand:#FF5A5A; --brand-soft:#3A1E22; --warn:#F2A55A; --warn-soft:#3A2A1A; --ok:#5FD39A; --ok-soft:#173226;
+    --line:#2E3542; --brand:#FF5A5A; --brand-soft:#3A1E22; --warn:#F2A55A; --warn-soft:#3A2A1A; --ok:#5FD39A; --ok-soft:#173226; --fin-inv:#F04848; --fin-rec:#3F87DA;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
   }
 }
 :root[data-theme="dark"]{
   --bg:#12161D; --surface:#1A1F28; --surface-2:#202631; --ink:#E7EAF0; --muted:#A3ACBB; --faint:#7C8596;
-  --line:#2E3542; --brand:#FF5A5A; --brand-soft:#3A1E22; --warn:#F2A55A; --warn-soft:#3A2A1A; --ok:#5FD39A; --ok-soft:#173226;
+  --line:#2E3542; --brand:#FF5A5A; --brand-soft:#3A1E22; --warn:#F2A55A; --warn-soft:#3A2A1A; --ok:#5FD39A; --ok-soft:#173226; --fin-inv:#F04848; --fin-rec:#3F87DA;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -218,6 +218,16 @@ td.c-alerta{min-width:96px;max-width:116px}
 .ycol .val{font-size:13px;font-weight:600;margin-bottom:6px;white-space:nowrap}
 .ycol .col{width:56%;min-height:2px;background:var(--brand);border-radius:4px 4px 0 0}
 .ycol.nodate .col{background:var(--faint)}
+.ycol .stack{width:56%;min-height:2px;display:flex;flex-direction:column;gap:2px}
+.ycol .seg{display:block;min-height:2px;background:var(--fin-inv)}
+.ycol .seg.rec{background:var(--fin-rec)}
+.ycol .stack>.seg:first-child{border-radius:4px 4px 0 0}
+.ycol.nodate .seg{background:var(--faint)}
+.ycol:hover .seg{filter:brightness(1.12)}
+.fin-leg{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.fin-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--fin-inv)}
+.fin-leg i.rec{background:var(--fin-rec)}
+table tfoot td{font-weight:600;border-top:2px solid var(--line);border-bottom:0;background:var(--surface-2)}
 .ycol:hover .col{filter:brightness(1.12)}
 .ylabels{display:flex;gap:18px;padding:6px 4px 0}
 .ylabels span{flex:1;max-width:120px;text-align:center;font-size:12.5px;color:var(--muted)}
@@ -488,8 +498,8 @@ function renderTable(list){
       <td class="num">${has(p.pressupost)?eur.format(+p.pressupost):pend}</td>
       <td class="num">${has(p.recurrent2027)?eur.format(+p.recurrent2027):'<span class="pending">—</span>'}</td>
       <td class="c-alerta">${a?`<span class="flag">${esc(a)}</span>`:''}</td></tr>`}).join('')
-  }</tbody></table></div>`;
-  $('view').querySelectorAll('th').forEach(th=>th.onclick=()=>{sort=sort.k===th.dataset.k?{k:sort.k,dir:-sort.dir}:{k:th.dataset.k,dir:1};render()});
+  }</tbody><tfoot><tr><td colspan="8">Total · ${rows.length} ${rows.length===1?'projecte':'projectes'}</td>${['pressupost2026','pressupost','recurrent2027'].map(k=>{const v=rows.filter(p=>has(p[k])),s=v.reduce((a,p)=>a+(+p[k]||0),0);return `<td class="num" title="${v.length} projectes informats">${v.length?eur.format(s):'—'}</td>`}).join('')}<td></td></tr></tfoot></table></div>`;
+  $('view').querySelectorAll('thead th').forEach(th=>th.onclick=()=>{sort=sort.k===th.dataset.k?{k:sort.k,dir:-sort.dir}:{k:th.dataset.k,dir:1};render()});
   $('view').querySelectorAll('tbody tr').forEach(tr=>{tr.onclick=()=>openDrawer(tr.dataset.id);tr.onkeydown=e=>{if(e.key==='Enter')openDrawer(tr.dataset.id)}});
 }
 
@@ -601,10 +611,14 @@ function renderFin(list){
     let keys,share=1;
     if(finGroup==='__phase'){const ph=phasesOf(p.fase);keys=ph.map(k=>(PH.find(x=>x.k===k)?k+' ':'')+[...PH,...SIDE].find(x=>x.k===k).n);share=1/ph.length}
     else keys=[has(p[finGroup])?p[finGroup]:'Sense valor'];
-    keys.forEach(k=>{const g=groups[k]||(groups[k]={t:0,n:0,y:{}});g.n++;Object.entries(ys).forEach(([y,v])=>{g.y[y]=(g.y[y]||0)+v*share;g.t+=v*share})});
+    keys.forEach(k=>{const g=groups[k]||(groups[k]={t:0,n:0,y:{},r:0});g.n++;g.r+=(+p.recurrent2027||0)*share;Object.entries(ys).forEach(([y,v])=>{g.y[y]=(g.y[y]||0)+v*share;g.t+=v*share})});
   });
   const rows=Object.entries(groups).sort((a,b)=>(a[0]==='Sense valor')-(b[0]==='Sense valor')||(finGroup==='__phase'?a[0].localeCompare(b[0]):b[1].t-a[1].t));
   const maxY=Math.max(1,...years.map(y=>byYear[y]));
+  /* Despesa recurrent: només hi ha l'estimació del 2027 */
+  const recY=rec?{[String(ANY_BASE+1)]:rec}:{};
+  const cYears=[...new Set([...years.filter(y=>y!==NODATE),...Object.keys(recY)])].sort();if(byYear[NODATE])cYears.push(NODATE);
+  const maxC=Math.max(1,...cYears.map(y=>(byYear[y]||0)+(recY[y]||0)));
   const estat=ESTATS.map(e=>{const ps=withB.filter(p=>p.progres===e);return [e,ps.length,ps.reduce((s,p)=>s+(+p.pressupost),0)]});
   const maxE=Math.max(1,...estat.map(e=>e[2]));
   const top=[...per].sort((a,b)=>b.p.pressupost-a.p.pressupost).slice(0,8);
@@ -619,9 +633,10 @@ function renderFin(list){
       ${rec?`<div class="stat" title="${esc(eur.format(rec))}"><div class="v">${eurK(rec)}</div><div class="l">recurrent 2027 estimat · ${withR.length} ${withR.length===1?'projecte':'projectes'} (no inclòs a la inversió)</div></div>`:''}
     </div>
     <div class="fin-grid fin-sec">
-      <div><h3>Pressupost per any</h3><p class="sub">2026: el pressupost 2026 informat. 2027 i següents: la resta, segons els dies d'execució.</p>
-        <div class="ychart">${years.map(y=>`<div class="ycol${y===NODATE?' nodate':''}" title="${esc(yl(y))}: ${esc(eur.format(byYear[y]))} (${pctOf(byYear[y])} del total)"><span class="val">${eurK(byYear[y])}</span><span class="col" style="height:${(byYear[y]/maxY*78).toFixed(1)}%"></span></div>`).join('')}</div>
-        <div class="ylabels">${years.map(y=>`<span class="${y===nowY?'cur':''}">${esc(y)}</span>`).join('')}</div>
+      <div><h3>Inversió i despesa recurrent per any</h3><p class="sub">Inversió: el 2026, el pressupost 2026 informat; del 2027 endavant, la resta segons els dies d'execució. Despesa recurrent: estimació per al 2027 (del 2026 no se'n té dada).</p>
+        <div class="fin-leg"><span><i></i>Inversió</span><span><i class="rec"></i>Despesa recurrent</span></div>
+        <div class="ychart">${cYears.map(y=>{const iv=byYear[y]||0,rv=recY[y]||0,t=iv+rv;return `<div class="ycol${y===NODATE?' nodate':''}" title="${esc(y)} · Inversió: ${esc(eur.format(iv))}${rv?' · Despesa recurrent: '+esc(eur.format(rv)):''} · Total: ${esc(eur.format(t))}"><span class="val">${eurK(t)}</span><span class="stack" style="height:${(t/maxC*78).toFixed(1)}%">${rv?`<span class="seg rec" style="flex:${rv}"></span>`:''}${iv?`<span class="seg" style="flex:${iv}"></span>`:''}</span></div>`}).join('')}</div>
+        <div class="ylabels">${cYears.map(y=>`<span class="${y===nowY?'cur':''}">${esc(y)}</span>`).join('')}</div>
       </div>
       <div><h3>Pressupost per estat</h3><p class="sub">On és compromesa la inversió.</p>
         <div class="grp hd"><span>Estat</span><span></span><span class="n">Projectes</span><span class="m">Pressupost</span></div>
@@ -630,9 +645,9 @@ function renderFin(list){
     </div>
     <div class="fin-sec">
       <div class="fin-head"><h3>Distribució anual per</h3><select id="fg" aria-label="Agrupa el pressupost per">${FIN_GROUPS.map(([k,l])=>`<option value="${k}"${k===finGroup?' selected':''}>${l}</option>`).join('')}</select></div>
-      <div class="scroll"><table class="mx"><thead><tr><th>${esc(glabel)}</th><th class="num">Projectes</th>${years.map(y=>`<th class="num">${esc(y)}</th>`).join('')}<th class="num">Total</th><th>Pes</th></tr></thead>
-      <tbody>${rows.map(([k,g])=>`<tr><td>${esc(k)}</td><td class="num">${g.n}</td>${years.map(y=>`<td class="num" title="${esc(eur.format(g.y[y]||0))}">${g.y[y]?eurK(g.y[y]):'—'}</td>`).join('')}<td class="num"><b>${eurK(g.t)}</b></td><td><span class="share"><span class="hbar"><i style="width:${(g.t/total*100).toFixed(1)}%"></i></span><b>${pctOf(g.t)}</b></span></td></tr>`).join('')}</tbody>
-      <tfoot><tr><td>Total</td><td class="num">${withB.length}</td>${years.map(y=>`<td class="num">${eurK(byYear[y])}</td>`).join('')}<td class="num">${eurK(total)}</td><td></td></tr></tfoot></table></div>
+      <div class="scroll"><table class="mx"><thead><tr><th>${esc(glabel)}</th><th class="num">Projectes</th>${years.map(y=>`<th class="num">${esc(y)}</th>`).join('')}<th class="num">Total</th><th class="num">Recurrent 2027</th><th>Pes</th></tr></thead>
+      <tbody>${rows.map(([k,g])=>`<tr><td>${esc(k)}</td><td class="num">${g.n}</td>${years.map(y=>`<td class="num" title="${esc(eur.format(g.y[y]||0))}">${g.y[y]?eurK(g.y[y]):'—'}</td>`).join('')}<td class="num"><b>${eurK(g.t)}</b></td><td class="num" title="${esc(eur.format(g.r))}">${g.r?eurK(g.r):'—'}</td><td><span class="share"><span class="hbar"><i style="width:${(g.t/total*100).toFixed(1)}%"></i></span><b>${pctOf(g.t)}</b></span></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td><td class="num">${withB.length}</td>${years.map(y=>`<td class="num">${eurK(byYear[y])}</td>`).join('')}<td class="num">${eurK(total)}</td><td class="num">${rec?eurK(rec):'—'}</td><td></td></tr></tfoot></table></div>
     </div>
     <div class="fin-sec"><h3>Projectes amb més pressupost</h3><p class="sub">Els ${top.length} primers, amb el repartiment per any.</p>
       ${top.map(({p,ys})=>`<div class="top-p" data-id="${esc(p.codi)}" tabindex="0"><span class="c">${esc(p.codi)}</span><span>${esc(p.nom)}</span><span class="m">${eurK(+p.pressupost)}</span><span class="ys">${Object.entries(ys).map(([y,v])=>`${esc(y)}: ${eurK(v)}`).join(' · ')}</span></div>`).join('')}
