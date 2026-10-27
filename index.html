@@ -618,15 +618,17 @@ const NODATE='No repartit', ANY_BASE=2026;
 function yearsSplit(p){
   /* 2026 = columna «Pressupost 2026» (si no està informada, no s'imputa res al 2026).
      2027 i següents = total − 2026, repartit segons els dies d'execució a partir de l'1/1/2027.
-     El que no es pot repartir (sense dates o sense dies a partir del 2027) va a «No repartit». */
+     Si no hi ha «Pressupost 2026» i la resta no es pot repartir (sense dates o sense dies a partir del 2027), va al 2027.
+     Amb «Pressupost 2026» informat, el que no es pot repartir va a «No repartit». */
   const m=+p.pressupost||0; if(!m)return {};
   const out={}, add=(k,v)=>{if(v>0.005)out[k]=(out[k]||0)+v};
   const p26=has(p.pressupost2026)?Math.min(Math.max(+p.pressupost2026||0,0),m):0;
   add(String(ANY_BASE),p26);
   const rest=m-p26; if(rest<=0.005)return out;
-  if(!p.inici||!p.fi||p.fi<p.inici){add(NODATE,rest);return out}
+  const noRep=()=>{add(has(p.pressupost2026)?NODATE:String(ANY_BASE+1),rest);return out};
+  if(!p.inici||!p.fi||p.fi<p.inici)return noRep();
   const day=864e5, d0=Math.max(Date.parse(p.inici+'T00:00:00Z'),Date.UTC(ANY_BASE+1,0,1)), d1=Date.parse(p.fi+'T00:00:00Z');
-  if(d1<d0){add(NODATE,rest);return out}
+  if(d1<d0)return noRep();
   const tot=(d1-d0)/day+1;
   for(let y=new Date(d0).getUTCFullYear();y<=new Date(d1).getUTCFullYear();y++){
     const a=Math.max(d0,Date.UTC(y,0,1)), b=Math.min(d1,Date.UTC(y,11,31));
@@ -692,7 +694,7 @@ function renderFin(list){
     <div class="fin-sec"><h3>Projectes amb més pressupost</h3><p class="sub">Els ${top.length} primers, amb el repartiment per any.</p>
       ${top.map(({p,ys})=>`<div class="top-p" data-id="${esc(p.codi)}" tabindex="0"><span class="c">${esc(p.codi)}</span><span>${esc(p.nom)}</span><span class="m">${eurK(+p.pressupost)}</span><span class="ys">${Object.entries(ys).map(([y,v])=>`${esc(y)}: ${eurK(v)}`).join(' · ')}</span></div>`).join('')}
     </div>
-    <p class="fin-note">Només compten els projectes amb pressupost informat (${withB.length} de ${list.length}). El 2026 hi compta el «Pressupost 2026» informat (si no n'hi ha, no s'hi imputa res); la resta del pressupost total es reparteix entre el 2027 i els anys següents de manera proporcional als dies d'execució. El recurrent 2027 és una estimació (20 % del pressupost 2026 dels projectes que s'executen sencers el 2026) i no forma part de la inversió. L'execució estimada és el pressupost multiplicat pel % completat. Les xifres responen als filtres actius.</p>
+    <p class="fin-note">Només compten els projectes amb pressupost informat (${withB.length} de ${list.length}). El 2026 hi compta el «Pressupost 2026» informat (si no n'hi ha, no s'hi imputa res); la resta del pressupost total es reparteix entre el 2027 i els anys següents de manera proporcional als dies d'execució; si no hi ha «Pressupost 2026» i el projecte no té dies d'execució a partir del 2027 (o no té dates), tot el pressupost s'imputa al 2027. El recurrent 2027 és una estimació (20 % del pressupost 2026 dels projectes que s'executen sencers el 2026) i no forma part de la inversió. L'execució estimada és el pressupost multiplicat pel % completat. Les xifres responen als filtres actius.</p>
   </div>`;
   $('fg').onchange=e=>{finGroup=e.target.value;render()};
   $('view').querySelectorAll('.top-p').forEach(el=>{el.onclick=()=>openDrawer(el.dataset.id);el.onkeydown=e=>{if(e.key==='Enter')openDrawer(el.dataset.id)}});
