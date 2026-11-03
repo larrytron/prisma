@@ -118,7 +118,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .objs-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .objs-head h2{font-size:16px;margin:0;font-weight:600}
 .objs-head span{color:var(--muted);font-size:12.5px}
-.objs-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,190px) minmax(0,1fr);gap:14px;align-items:stretch}
+.objs-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,330px) minmax(0,1fr);gap:14px;align-items:stretch}
 @media (max-width:960px){.objs-grid{grid-template-columns:1fr}}
 .obj{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:11px 14px 10px;border-radius:12px;border:1px solid var(--line);border-top:4px solid var(--c);background:var(--surface-2);transition:box-shadow .15s,opacity .15s,background .15s;min-width:0}
 .obj:hover{box-shadow:var(--shadow)}
@@ -136,20 +136,20 @@ button,input,select,textarea{font:inherit;color:inherit}
 .obj .st-leg{display:flex;gap:12px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
 .obj .st-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
 .venn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0}
-.venn svg{width:100%;max-width:150px;height:auto;display:block}
+.venn svg{width:100%;max-width:290px;height:auto;display:block}
 .venn .c1{fill:var(--o1);fill-opacity:.12;stroke:var(--o1);stroke-width:1.5}
 .venn .c2{fill:var(--o2);fill-opacity:.12;stroke:var(--o2);stroke-width:1.5}
-.venn .vh{font-family:var(--cond);font-weight:700;font-size:14px}
-.venn .vn{font-family:var(--sans);font-weight:700;font-size:28px}
-.venn .vl{font-family:var(--sans);font-size:10.5px;fill:var(--muted)}
+.venn .vh{font-family:var(--cond);font-weight:700;font-size:11px}
+.venn .vn{font-family:var(--sans);font-weight:700;font-size:22px}
+.venn .vl{font-family:var(--sans);font-size:9px;fill:var(--muted)}
 .venn .rg{cursor:pointer;outline:none}
 .venn .rg rect{fill:transparent;stroke:transparent;stroke-width:1.5}
 .venn .rg:hover rect,.venn .rg:focus-visible rect{fill:var(--surface);fill-opacity:.7;stroke:var(--line)}
 .venn .rg.on rect{fill:var(--surface);fill-opacity:.85;stroke:var(--ink)}
-.bal{width:100%;max-width:190px}
-.bal-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--surface-2)}
+.bal{width:100%;max-width:300px}
+.bal-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2)}
 .bal-bar i{display:block;height:100%}
-.bal-l{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:var(--muted);margin-top:4px;font-weight:600}
+.bal-l{display:flex;justify-content:space-between;gap:6px;font-size:12.5px;color:var(--muted);margin-top:4px;font-weight:600}
 .bal-l span:nth-child(2){font-weight:400}
 .ob{display:inline-block;font-family:var(--cond);font-weight:700;font-size:11.5px;line-height:1.5;padding:0 7px;border-radius:999px;margin-right:4px;color:var(--surface);vertical-align:1px}
 .ob-o1{background:var(--o1)}.ob-o2{background:var(--o2)}
@@ -386,7 +386,6 @@ body.locked #app,body.locked .drawer,body.locked .scrim{display:none}
       <span>Fes clic en un objectiu o en una zona del diagrama per filtrar.</span>
     </div>
     <div class="objs-grid" id="objsGrid"></div>
-    <div class="sdlc-foot">Un projecte que ataca tots dos objectius compta a tots dos; el seu pressupost es reparteix a parts iguals.</div>
   </section>
 
   <section class="sdlc" id="sdlc" aria-label="Projectes i pressupost per fase del SDLC">
@@ -549,7 +548,7 @@ function renderObjs(list){
   /* Diagrama de Venn: l'àrea de cada cercle és proporcional als projectes de l'objectiu */
   const n1=st.O1.n,n2=st.O2.n,mx=Math.max(n1,n2,1),R=n=>Math.max(36,74*Math.sqrt(n/mx));
   const a=R(n1),b=R(n2),mn=Math.min(a,b),ov=both?Math.min(Math.max(46,mn*.75),2*mn-24):-14;
-  const top=Math.max(a,b),cy=top+30,c1=a+8,c2=c1+a+b-ov,W=c2+b+8,H=cy+top+8;
+  const top=Math.max(a,b),cy=top+22,c1=a+8,c2=c1+a+b-ov,W=c2+b+8,H=cy+top+8;
   const x1=((c1-a)+(c2-b))/2,xb=((c2-b)+(c1+a))/2,x2=((c1+a)+(c2+b))/2,F=v=>v.toFixed(1);
   const reg=(k,x,n,l,col)=>`<g class="rg${f===k?' on':''}" data-obj="${k}" tabindex="0" role="button" aria-pressed="${f===k}" aria-label="${esc(l)}: ${n} projectes"><rect x="${F(x-30)}" y="${F(cy-30)}" width="60" height="58" rx="8"/><text x="${F(x)}" y="${F(cy+5)}" text-anchor="middle" class="vn" style="fill:${col}">${n}</text><text x="${F(x)}" y="${F(cy+22)}" text-anchor="middle" class="vl">${esc(l)}</text></g>`;
   const venn=`<svg viewBox="0 0 ${F(W)} ${F(H)}" role="group" aria-label="Projectes per objectiu del programa">
